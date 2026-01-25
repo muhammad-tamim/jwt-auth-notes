@@ -1,25 +1,36 @@
 <h1 align="center">JWT Authorization Notes</h1>
 
 - [Introduction:](#introduction)
-- [setup:](#setup)
+    - [JWT structure:](#jwt-structure)
 - [Different ways to implement JWT:](#different-ways-to-implement-jwt)
+    - [setup:](#setup)
     - [JWT with LocalStorage:](#jwt-with-localstorage)
     - [JWT with Cookies:](#jwt-with-cookies)
     - [JWT with Firebase:](#jwt-with-firebase)
 
 
 # Introduction: 
-JWT stands for JSON Web Token. We used JWT for secure our api. 
+JWT stands for JSON Web Token. We use JWT to secure our API. It is a compact and secure way to transmit information between a client and a server as a JSON object.
 
-# setup:
+After a user logs in successfully, the server generates a JWT and sends it to the client. The client then includes this token with every request to access protected routes (usually in the Authorization header).
+
+The server verifies the token before allowing access to protected data. Without a valid token, a hacker or unauthorized user cannot access the API. Therefore, to access protected data, users must first log in through our system.
+
+### JWT structure:
+
+A JWT consists of three parts, separated by dots (.): header.payload.signature
+
+![image](./assets/images/jwt.png)
+
+# Different ways to implement JWT:
+
+### setup:
 
 Install it to backend: 
 
 ```bash
 npm i jsonwebtoken
 ``` 
-
-# Different ways to implement JWT:
 
 ### JWT with LocalStorage: 
 

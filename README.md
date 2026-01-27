@@ -8,6 +8,8 @@
       - [Without axios interceptor:](#without-axios-interceptor)
       - [With axios interceptor:](#with-axios-interceptor)
 - [Authorization using firebase:](#authorization-using-firebase)
+    - [Without axios interceptor:](#without-axios-interceptor-1)
+    - [With axios interceptor:](#with-axios-interceptor-1)
 
 
 # Introduction: 
@@ -650,6 +652,8 @@ require('crypto').randomBytes(64).toString('hex')
 
 # Authorization using firebase:
 
+### Without axios interceptor:
+
 - Frontend: 
 
 ```js
@@ -844,4 +848,79 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}`)
 })
+```
+
+### With axios interceptor: 
+
+```js
+//api/axiosSecure.js
+import axios from 'axios'
+import { signOut } from 'firebase/auth'
+import { auth } from '../firebase/firebase.init'
+
+const axiosSecure = axios.create({
+    baseURL: import.meta.env.VITE_API_URL
+})
+
+// ✅ REQUEST interceptor (attach Firebase token)
+axiosSecure.interceptors.request.use(async (config) => {
+    const user = auth.currentUser
+    if (user) {
+        const token = await user.getIdToken()
+        config.headers.authorization = `Bearer ${token}`
+    }
+    return config
+},
+    error => Promise.reject(error)
+)
+
+// ✅ RESPONSE interceptor (auto logout)
+axiosSecure.interceptors.response.use(response => response, error => {
+    const status = error.response?.status
+    if (status === 401 || status === 403) {
+        signOut(auth)
+        window.location.href = '/signin'
+    }
+    return Promise.reject(error)
+}
+)
+
+export default axiosSecure
+```
+
+here, for request interceptor: 
+- `config` : the request object (URL, headers, method, etc.)
+
+
+```jsx
+// MyRecipes.jsx
+import React, { useContext, useEffect, useState } from 'react';
+import { AuthContext } from '../contexts/AuthContext';
+import axiosSecure from '../api/axiosSecure';
+
+const MyRecipes = () => {
+    const { user } = useContext(AuthContext)
+
+    const [recipes, setRecipes] = useState([])
+
+    useEffect(() => {
+
+        axiosSecure.get(`/recipes/${user.email}`)
+            .then(data => setRecipes(data?.data))
+            .catch(err => console.log(err))
+
+    }, [user])
+
+    return (
+        <div className='grid grid-cols-5 gap-5'>
+            {recipes.map(recipe => <div key={recipe._id} className='border'>
+                <img src={recipe.image} className='size-20' />
+                <p>{recipe.title}</p>
+            </div>
+            )}
+        </div>
+    );
+};
+
+export default MyRecipes;
 ```

@@ -374,13 +374,21 @@ async function run() {
         const email = req.body.email
         const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' })
 
-        res.cookie('token', token, { httpOnly: true, secure: false })
-            .send({ message: "JWT with cookie created" })
+        res.cookie('token', token, {
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' 
+         })
+        .send({ message: "JWT with cookie created" })
     })
 
     app.post('/jwt-logout', (req, res) => {
-        res.clearCookie('token', { httpOnly: true, secure: false })
-            .send({ message: 'JWT with cookie Logged out successfully' })
+        res.clearCookie('token', { 
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' 
+        })
+        .send({ message: 'JWT with cookie Logged out successfully' })
     })
 
 
@@ -603,13 +611,21 @@ async function run() {
         const email = req.body.email
         const token = jwt.sign({ email }, process.env.JWT_SECRET_KEY, { expiresIn: '7d' })
 
-        res.cookie('token', token, { httpOnly: true, secure: false })
-            .send({ message: "JWT with cookie created" })
+       res.cookie('token', token, {
+         httpOnly: true, 
+         secure: process.env.NODE_ENV === 'production',
+         sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' 
+         })
+        .send({ message: "JWT with cookie created" })
     })
 
     app.post('/jwt-logout', (req, res) => {
-        res.clearCookie('token', { httpOnly: true, secure: false })
-            .send({ message: 'JWT with cookie Logged out successfully' })
+        res.clearCookie('token', { 
+            httpOnly: true, 
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict' 
+        })
+        .send({ message: 'JWT with cookie Logged out successfully' })
     })
 
 

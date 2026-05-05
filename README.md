@@ -1683,37 +1683,6 @@ async function run() {
     const usersCollection = client.db("productsDB").collection('users')
 
 
-    // Jwt API
-    app.post("/jwt", async (req, res) => {
-        const { id, email, role } = req.body
-        const token = jwt.sign({ id, email, role }, process.env.JWT_ACCESS_SECRET, { expiresIn: '7d' })
-
-        res.cookie('token', token, {
-            httpOnly: true,
-            secure: false,       // true in production 
-            sameSite: "lax",     // "none" in production
-        })
-
-        res.send({
-            success: true,
-            message: "Authentication successful",
-        })
-    })
-
-    app.post('/jwt-logout', (req, res) => {
-        res.clearCookie('token', {
-            httpOnly: true,
-            secure: false,       // true in production 
-            sameSite: "lax",     // "none" in production
-        })
-        res.send({
-            success: true,
-            message: "User logged out and token cleared",
-        })
-
-    })
-
-
     // products API
     app.post('/products', verifyJwt, verifyRole("SELLER", "ADMIN"), async (req, res) => {
         const product = req.body;

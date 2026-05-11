@@ -34,73 +34,89 @@ A JWT consists of three parts, separated by dots (.): header.payload.signature
 
 ```js
 // AuthProvider.jsx
-import { auth } from '../firebase/firebase.init'
-import { AuthContext } from './AuthContext'
-import { useEffect, useState } from 'react'
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, } from 'firebase/auth'
-import axios from 'axios'
+import { auth } from "../firebase/firebase.init";
+import { AuthContext } from "./AuthContext";
+import { useEffect, useState } from "react";
 
-const AuthProvider = ({ children }) => {
-  const googleProvider = new GoogleAuthProvider()
+import {
+    GoogleAuthProvider,
+    onAuthStateChanged,
+    signInWithPopup,
+    signOut,
+} from "firebase/auth";
 
-  const [user, setUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+import axios from "axios";
 
-  const signInWithGoogle = () => {
-    setLoading(true)
-    return signInWithPopup(auth, googleProvider)
-  }
+export default function AuthProvider = ({ children }) => {
+    const googleProvider = new GoogleAuthProvider();
 
-  const logOut = () => {
-    localStorage.removeItem('token')
-    return signOut(auth)
-  }
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, currentUser => {
-      setUser(currentUser)
+    // Google Login
+    const signInWithGoogle = () => {
+        setLoading(true);
+        return signInWithPopup(auth, googleProvider);
+    };
 
+    // Logout
+    const logOut = () => {
+        localStorage.removeItem("token");
+        return signOut(auth);
+    };
 
-    const getUserByEmail = async (email) => {
-        const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/${email}`);
-        return res.data.result;
-    },
+    useEffect(() => {
+        const unsubscribe = onAuthStateChanged(
+            auth,
+            async (currentUser) => {
+                setUser(currentUser);
 
-    const user = getUserByEmail(email)
-    const payload = {
-        id: user._id,
-        email: user.email
-        role: user.role
-    }
+                if (currentUser?.email) {
+                    try {
+                        // Get user from database
+                        const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/${currentUser.email}`);
 
-      if (currentUser?.email) {
-        axios.post(`${import.meta.env.VITE_API_URL}/jwt`, payload)
-          .then(data => {
-            console.log(data.data)
-            localStorage.setItem('token', data.data.token)
-          })
-      }
+                        const dbUser = res.data.result;
 
-      setLoading(false)
+                        // JWT Payload
+                        const payload = {
+                            id: dbUser._id,
+                            email: dbUser.email,
+                            role: dbUser.role,
+                        };
 
-    })
-    return () => {
-      unsubscribe()
-    }
-  }, [])
+                        // Create JWT
+                        const jwtRes = await axios.post( `${import.meta.env.VITE_API_URL}/jwt`,payload);
 
-  const authData = {
-    user,
-    setUser,
-    logOut,
-    signInWithGoogle,
-    loading,
-    setLoading,
-  }
-  return <AuthContext value={authData}>{children}</AuthContext>
-}
+                        localStorage.setItem("token",jwtRes.data.token);
 
-export default AuthProvider
+                    } catch (error) {
+                        console.error(error);
+                    }
+                }
+
+                setLoading(false);
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
+
+    const authData = {
+        user,
+        setUser,
+        logOut,
+        signInWithGoogle,
+        loading,
+        setLoading,
+    };
+
+    return (
+        <AuthContext value={authData}>
+            {children}
+        </AuthContext>
+    );
+};
 ```
 
 ```js
@@ -368,72 +384,80 @@ JWT_ACCESS_SECRET=48c7ae40080b52a273cd579da2df72099b6d2d1648279ea03b56f2e4b58dcb
 
 ```js
 // AuthProvider.jsx
-import { auth } from '../firebase/firebase.init'
-import { AuthContext } from './AuthContext'
-import { useEffect, useState } from 'react'
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, } from 'firebase/auth'
-import axios from 'axios'
+import { auth } from "../firebase/firebase.init";
+import { AuthContext } from "./AuthContext";
+import { useEffect, useState } from "react";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut} from "firebase/auth";
+import axios from "axios";
 
-const AuthProvider = ({ children }) => {
-    const googleProvider = new GoogleAuthProvider()
+export default function AuthProvider = ({ children }) => {
+    const googleProvider = new GoogleAuthProvider();
 
-    const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
+    // Google Login
     const signInWithGoogle = () => {
-        setLoading(true)
-        return signInWithPopup(auth, googleProvider)
-    }
+        setLoading(true);
+        return signInWithPopup(auth, googleProvider);
+    };
 
-    const logOut = () => {
-        return axios.post(`${import.meta.env.VITE_API_URL}/jwt-logout`, {}, { withCredentials: true })
-            .then(() => signOut(auth))
-    }
+    // Logout
+    const logOut = async () => {
+        await axios.post(
+            `${import.meta.env.VITE_API_URL}/jwt-logout`,{},{ withCredentials: true });
+
+        return signOut(auth);
+    };
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, currentUser => {
-            setUser(currentUser)
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            setUser(currentUser);
 
-
-            const getUserByEmail = async (email) => {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/${email}`);
-                return res.data.result;
-            },
-
-            const user = getUserByEmail(email)
-            const payload = {
-                id: user._id,
-                email: user.email,
-                role: user.role
-            }
-
+            // If user logged in
             if (currentUser?.email) {
-                axios.post(`${import.meta.env.VITE_API_URL}/jwt`, payload, { withCredentials: true })
-                    .then(data => {
-                        console.log(data.data)
-                    })
+                try {
+                    // Get user from DB
+                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/${currentUser.email}`);
+
+                    const dbUser = res.data.result;
+
+                    // JWT Payload
+                    const payload = {
+                        id: dbUser._id,
+                        email: dbUser.email,
+                        role: dbUser.role,
+                    };
+
+                    // Create JWT Cookie
+                    await axios.post(`${import.meta.env.VITE_API_URL}/jwt`,payload, { withCredentials: true });
+
+                } catch (error) {
+                    console.error(error);
+                }
             }
 
-            setLoading(false)
+            setLoading(false);
+        });
 
-        })
-        return () => {
-            unsubscribe()
-        }
-    }, [])
+        return () => unsubscribe();
+    }, []);
 
     const authData = {
         user,
         setUser,
-        logOut,
-        signInWithGoogle,
         loading,
         setLoading,
-    }
-    return <AuthContext value={authData}>{children}</AuthContext>
-}
+        signInWithGoogle,
+        logOut,
+    };
 
-export default AuthProvider
+    return (
+        <AuthContext value={authData}>
+            {children}
+        </AuthContext>
+    );
+};
 ```
 
 ```js
@@ -719,72 +743,80 @@ JWT_ACCESS_SECRET=48c7ae40080b52a273cd579da2df72099b6d2d1648279ea03b56f2e4b58dcb
 
 ```js
 // AuthProvider.jsx
-import { auth } from '../firebase/firebase.init'
-import { AuthContext } from './AuthContext'
-import { useEffect, useState } from 'react'
-import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut, } from 'firebase/auth'
-import axios from 'axios'
+import { auth } from "../firebase/firebase.init";
+import { AuthContext } from "./AuthContext";
+import { useEffect, useState } from "react";
+import { GoogleAuthProvider, onAuthStateChanged, signInWithPopup, signOut} from "firebase/auth";
+import axios from "axios";
 
-const AuthProvider = ({ children }) => {
-    const googleProvider = new GoogleAuthProvider()
+export default function AuthProvider = ({ children }) => {
+    const googleProvider = new GoogleAuthProvider();
 
-    const [user, setUser] = useState(null)
-    const [loading, setLoading] = useState(true)
+    const [user, setUser] = useState(null);
+    const [loading, setLoading] = useState(true);
 
+    // Google Login
     const signInWithGoogle = () => {
-        setLoading(true)
-        return signInWithPopup(auth, googleProvider)
-    }
+        setLoading(true);
+        return signInWithPopup(auth, googleProvider);
+    };
 
-    const logOut = () => {
-        return axios.post(`${import.meta.env.VITE_API_URL}/jwt-logout`, {}, { withCredentials: true })
-            .then(() => signOut(auth))
-    }
+    // Logout
+    const logOut = async () => {
+        await axios.post(
+            `${import.meta.env.VITE_API_URL}/jwt-logout`,{},{ withCredentials: true });
+
+        return signOut(auth);
+    };
 
     useEffect(() => {
-        const unsubscribe = onAuthStateChanged(auth, currentUser => {
-            setUser(currentUser)
+        const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+            setUser(currentUser);
 
-
-            const getUserByEmail = async (email) => {
-                const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/${email}`);
-                return res.data.result;
-            },
-
-            const user = getUserByEmail(email)
-            const payload = {
-                id: user._id,
-                email: user.email,
-                role: user.role
-            }
-
+            // If user logged in
             if (currentUser?.email) {
-                axios.post(`${import.meta.env.VITE_API_URL}/jwt`, payload, { withCredentials: true })
-                    .then(data => {
-                        console.log(data.data)
-                    })
+                try {
+                    // Get user from DB
+                    const res = await axios.get(`${import.meta.env.VITE_API_URL}/users/${currentUser.email}`);
+
+                    const dbUser = res.data.result;
+
+                    // JWT Payload
+                    const payload = {
+                        id: dbUser._id,
+                        email: dbUser.email,
+                        role: dbUser.role,
+                    };
+
+                    // Create JWT Cookie
+                    await axios.post(`${import.meta.env.VITE_API_URL}/jwt`,payload, { withCredentials: true });
+
+                } catch (error) {
+                    console.error(error);
+                }
             }
 
-            setLoading(false)
+            setLoading(false);
+        });
 
-        })
-        return () => {
-            unsubscribe()
-        }
-    }, [])
+        return () => unsubscribe();
+    }, []);
 
     const authData = {
         user,
         setUser,
-        logOut,
-        signInWithGoogle,
         loading,
         setLoading,
-    }
-    return <AuthContext value={authData}>{children}</AuthContext>
-}
+        signInWithGoogle,
+        logOut,
+    };
 
-export default AuthProvider
+    return (
+        <AuthContext value={authData}>
+            {children}
+        </AuthContext>
+    );
+};
 ```
 
 ```js

@@ -11,6 +11,12 @@
   - [Without axios interceptor:](#without-axios-interceptor-1)
   - [With axios interceptor:](#with-axios-interceptor-1)
 - [Custom Authentication + Authorization (JWT + Cookies):](#custom-authentication--authorization-jwt--cookies)
+  - [Express + MongoDB + JS:](#express--mongodb--js)
+    - [setup:](#setup)
+    - [Example:](#example)
+  - [Express + PostgreSQL + TS + Zod (Modular Pattern):](#express--postgresql--ts--zod-modular-pattern)
+    - [Setup:](#setup-1)
+    - [Example:](#example-1)
 
 
 # Introduction: 
@@ -1623,7 +1629,8 @@ export default AllUsers
 
 # Custom Authentication + Authorization (JWT + Cookies):
 
-- setup: 
+## Express + MongoDB + JS: 
+### setup: 
   
 ```bash
 npm init -y
@@ -1666,7 +1673,7 @@ JWT_ACCESS_SECRET=your_jwt_secret_key
 }
 ```
 
-- Sever: 
+### Example: 
 
 ```js
 // index.js
@@ -2044,4 +2051,581 @@ app.get('/', (req, res) => {
 app.listen(port, () => {
     console.log(`Server listening on port ${port}`)
 })
+```
+
+## Express + PostgreSQL + TS + Zod (Modular Pattern):  
+
+full example: https://github.com/tamim-111/b6a2
+
+### Setup: 
+
+```bash
+npm init -y
+npm i express pg cors dotenv zod jsonwebtoken cookie-parser bcrypt
+npm install -D typescript tsx @types/node @types/express @types/pg @types/cors @types/jsonwebtoken @types/cookie-parser @types/bcrypt 
+tsc --init
+```
+
+```js
+// tsconfig.json
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "module": "nodenext",
+    "target": "esnext",
+    "lib": [
+      "esnext"
+    ],
+    "types": [
+      "node"
+    ],
+    "sourceMap": true,
+    "declaration": true,
+    "declarationMap": true,
+    "noUncheckedIndexedAccess": true,
+    "exactOptionalPropertyTypes": true,
+    "strict": true,
+    "isolatedModules": true,
+    "noUncheckedSideEffectImports": true,
+    "moduleDetection": "force",
+    "skipLibCheck": true,
+  }
+}
+```
+
+```js
+// package.json
+{
+  "name": "b6a2",
+  "version": "1.0.0",
+  "description": "",
+  "main": "./src/server.ts",
+  "scripts": {
+    "dev": "tsx watch ./src/server.ts",
+    "build": "tsc",
+    "start": "node ./dist/server.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.21.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
+    "@types/node": "^25.9.1",
+    "@types/pg": "^8.20.0",
+    "tsx": "^4.22.3",
+    "typescript": "^6.0.3"
+  }
+}
+```
+
+```js
+// .env
+DATABASE_URL=postgresql://postgres:hello@localhost:5432/vehiclesDB
+PORT=3000
+JWT_ACCESS_SECRET=your_jwt_secret_key
+```
+
+### Example: 
+
+```
+src/
+│
+├── app.ts
+├── server.ts
+│
+├── config/
+│   ├── db.ts
+│   └── env.ts
+│
+├── modules/
+│   └── auth/
+│       ├── auth.validations.ts
+│       ├── auth.types.ts
+│       ├── auth.service.ts
+│       ├── auth.controller.ts
+│       ├── auth.routes.ts
+│
+├── middlewares/
+|    ├── validate.ts
+|    ├── verifyJwt.ts
+│    └── verifyRole.ts
+```
+
+```ts
+// src/config/db.ts
+
+import { Pool } from "pg";
+import envConfig from "./env.js";
+
+export const pool = new Pool({ connectionString: envConfig.databaseUrl });
+
+export default async function initDB() {
+  try {
+
+    await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      image TEXT NOT NULL,
+      email VARCHAR(255) NOT NULL UNIQUE CHECK (email = LOWER(email)),
+      password TEXT NOT NULL CHECK (char_length(password) >= 6),
+      phone VARCHAR(14) NOT NULL, 
+      role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('admin', 'customer'))
+      )`)
+
+    // await pool.query(`
+    // CREATE TABLE IF NOT EXISTS vehicles (
+    //   id SERIAL PRIMARY KEY,
+    //   vehicle_name VARCHAR(255) NOT NULL,  
+    //   type VARCHAR(10) NOT NULL CHECK (type IN ('suv', 'sedan', 'sports', 'electric')),
+    //   registration_number VARCHAR(50) NOT NULL UNIQUE,
+    //   daily_rent_price INT NOT NULL CHECK (daily_rent_price > 0),
+    //   availability_status VARCHAR(20) NOT NULL DEFAULT 'available' CHECK (availability_status IN ('available', 'booked'))
+    //   )`)
+
+    // await pool.query(`
+    // CREATE TABLE IF NOT EXISTS bookings (
+    //   id SERIAL PRIMARY KEY,
+    //   customer_id INT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    //   vehicle_id INT NOT NULL REFERENCES vehicles(id) ON DELETE CASCADE,
+    //   rent_start_date TIMESTAMP NOT NULL,
+    //   rent_end_date   TIMESTAMP NOT NULL CHECK (rent_end_date > rent_start_date),
+    //   total_price INT NOT NULL CHECK (total_price > 0),
+    //   status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'cancelled', 'returned'))
+    //   )`)
+
+    console.log("PostgreSQL connected successfully");
+  }
+  catch (error) {
+    console.log("PostgreSQL connection failed", error);
+
+    process.exit(1);
+  }
+}
+```
+
+```ts
+// src/config/env.ts
+
+import dotenv, { config } from "dotenv"
+
+dotenv.config()
+
+const envConfig = {
+    databaseUrl: process.env.DATABASE_URL,
+    port: process.env.PORT,
+    jwtAccessSecret: process.env.JWT_ACCESS_SECRET
+}
+
+export default envConfig
+```
+
+```ts
+// src/middlewares/validate.ts
+
+import { Request, Response, NextFunction } from "express";
+import { ZodType } from "zod";
+
+export const validate = (schema: ZodType) => (req: Request, res: Response, next: NextFunction) => {
+
+    const validation = schema.safeParse(req.body);
+
+    if (!validation.success) {
+
+        const errors = validation.error.issues.map(issue => ({
+            field: issue.path.join("."),
+            message: issue.message,
+        }));
+
+        return res.status(400).send({
+            success: false,
+            message: "Validation failed",
+            errors,
+        });
+    }
+
+    req.body = validation.data;
+
+    next();
+};
+```
+
+```ts
+// src/middlewares/verifyJwt.ts
+
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
+import { pool } from "../config/db.js";
+import envConfig from "../config/env.js";
+
+type JwtPayload = {
+    id: number;
+};
+
+export const verifyJwt = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const token = req.cookies?.token;
+
+        if (!token) {
+            return res.status(401).json({
+                success: false,
+                message: "Access token missing",
+            });
+        }
+
+        const decoded = jwt.verify(token, envConfig.jwtAccessSecret!) as JwtPayload
+
+        // PostgreSQL query instead of MongoDB collection
+        const result = await pool.query(
+            `SELECT id, name, email, phone, role FROM users WHERE id = $1`, [decoded.id]
+        );
+
+        const user = result.rows[0];
+
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: "User not found",
+            });
+        }
+
+        req.user = user;
+
+        next();
+    } catch (error) {
+        console.log(error);
+
+        return res.status(401).json({
+            success: false,
+            message: "Authentication failed",
+        });
+    }
+};
+```
+
+```ts
+// src/middlewares/verifyRole.ts
+
+import { Request, Response, NextFunction } from "express";
+
+export const verifyRole = (...roles: string[]) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        if (!req.user) {
+            return res.status(401).json({
+                success: false,
+                message: "Authentication required",
+            });
+        }
+
+        if (!roles.includes(req.user.role)) {
+            return res.status(403).json({
+                success: false,
+                message: `Access denied. Required role: ${roles.join(", ")}`,
+            });
+        }
+
+        next();
+    };
+};
+```
+
+```ts
+// src/types/express.d.ts
+
+import "express";
+
+declare global {
+    namespace Express {
+        interface Request {
+            user?: {
+                id: number;
+                name: string;
+                email: string;
+                phone: string;
+                role: "admin" | "customer";
+            };
+        }
+    }
+}
+```
+
+```ts
+// src/app.ts
+
+import express, { Request, Response } from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
+import initDB from "./config/db.js";
+import { authRoutes } from "./modules/auth/auth.routes.js";
+
+
+const app = express();
+
+app.use(cors({
+    origin: ["http://localhost:5173"],
+    credentials: true,
+}));
+app.use(express.json());
+app.use(cookieParser());
+
+initDB();
+
+app.use("/api/v1/auth", authRoutes);
+
+app.get("/", (_req, res: Response) => {
+    return res.status(200).send({
+        success: true,
+        message: "Server is running",
+    });
+});
+
+app.use((req: Request, res: Response) => {
+    return res.status(404).send({
+        success: false,
+        message: "Route Not Found",
+        path: req.path,
+    });
+});
+
+export default app;
+```
+
+```ts
+// src/server.ts
+
+import app from "./app.js";
+import envConfig from "./config/env.js";
+
+const port = envConfig.port || 3000;
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+});
+```
+
+```ts
+// src/modules/auth/auth.validations.ts
+
+import z from "zod";
+
+export const signUpSchema = z.object({
+    name: z.string().min(2, "Name must be at least 2 characters").max(100, "Name too long"),
+    image: z.url(),
+    email: z.email("Invalid Email").transform((val) => val.toLowerCase()),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+    phone: z.string().max(14, "Phone number is to long"),
+});
+
+export const signInSchema = z.object({
+    email: z.email("Invalid Email").transform((val) => val.toLowerCase()),
+    password: z.string().min(6, "Password must be at least 6 characters"),
+})
+```
+
+```ts
+// src/modules/auth/auth.types.ts
+
+import z from "zod";
+import { signInSchema, signUpSchema } from "./auth.validations.js";
+
+export type signUpUserInput = z.infer<typeof signUpSchema>;
+
+export type signinUserInput = z.infer<typeof signInSchema>;
+```
+
+```ts
+// src/modules/auth/auth.service.ts
+
+import bcrypt from "bcryptjs";
+import { pool } from "../../config/db.js";
+import { signinUserInput, signUpUserInput } from "./auth.types.js";
+import jwt from "jsonwebtoken";
+import envConfig from "../../config/env.js";
+
+export const authService = {
+    async signUpUser(payload: signUpUserInput) {
+        const { name, image, email, password, phone } = payload;
+
+        const existingUser = await pool.query(`SELECT id FROM users WHERE email = $1`, [email])
+
+        if (existingUser.rows.length > 0) {
+            throw new Error("USER_EXISTS");
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 10)
+
+        const result = await pool.query(`
+            INSERT INTO users (name, image, email, password, phone)
+            VALUES ($1, $2, $3, $4, $5)
+            RETURNING id, name, image, email, phone, role`,
+            [name, image, email, hashedPassword, phone]
+        )
+
+        return result.rows[0]
+    },
+
+    async signInUser(payload: signinUserInput) {
+        const { email, password } = payload
+
+        const result = await pool.query(`SELECT * FROM users WHERE email = $1`, [email])
+
+        const user = result.rows[0]
+
+        if (!user) {
+            throw new Error("INVALID_CREDENTIALS")
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password)
+
+        if (!isMatch) {
+            throw new Error("INVALID_CREDENTIALS")
+        }
+
+        const token = jwt.sign(
+            { id: user.id },
+            envConfig.jwtAccessSecret!,
+            { expiresIn: "7d" }
+        );
+
+        return {
+            user: {
+                id: user.id,
+                name: user.name,
+                email: user.email,
+                phone: user.phone,
+                role: user.role,
+            },
+            token,
+        };
+
+    }
+}
+```
+
+```ts
+// src/modules/auth/auth.controller.ts
+
+import { Request, Response } from "express";
+import { authService } from "./auth.service.js";
+
+const isProduction = process.env.NODE_ENV === "production";
+
+export const authController = {
+    async signUpUser(req: Request, res: Response) {
+        try {
+            const result = await authService.signUpUser(req.body)
+            return res.status(201).send({
+                success: true,
+                message: "User signUP successfully",
+                data: result,
+            });
+        }
+        catch (error: any) {
+            console.log(error);
+
+            if (error.message === "USER_EXISTS") {
+                return res.status(409).send({
+                    success: false,
+                    message: "User already exists",
+                });
+            }
+
+            return res.status(500).send({
+                success: false,
+                message: "SignUp failed",
+            });
+        }
+    },
+
+    async signInUser(req: Request, res: Response) {
+        try {
+            const { user, token } = await authService.signInUser(req.body);
+
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: isProduction ? "none" : "lax",
+                maxAge: 7 * 24 * 60 * 60 * 1000,
+            });
+
+            return res.status(200).send({
+                success: true,
+                message: "SignIn successful",
+                data: user,
+            });
+        } catch (error: any) {
+            if (error.message === "INVALID_CREDENTIALS") {
+                return res.status(401).json({
+                    success: false,
+                    message: "Invalid credentials",
+                });
+            }
+
+            return res.status(500).json({
+                success: false,
+                message: "SignIn failed",
+            });
+        }
+    },
+
+    async signOutUser(_req: Request, res: Response) {
+        try {
+            res.clearCookie("token", {
+                httpOnly: true,
+                secure: isProduction,
+                sameSite: isProduction ? "none" : "lax",
+            });
+
+            return res.status(200).json({
+                success: true,
+                message: "SignOut out successfully",
+            });
+        } catch {
+            return res.status(500).json({
+                success: false,
+                message: "SignOut failed",
+            });
+        }
+    },
+
+    async me(req: Request, res: Response) {
+        return res.status(200).json({
+            success: true,
+            message: "User fetched successfully",
+            data: req.user,
+        });
+    }
+}
+```
+
+```ts
+// src/modules/auth/auth.routes.ts
+
+import { Router } from "express";
+import { authController } from "./auth.controller.js";
+import { verifyJwt } from "../../middlewares/verifyJwt.js";
+
+export const authRoutes = Router();
+
+authRoutes.post("/signup", authController.signUpUser)
+authRoutes.post("/signin", authController.signInUser)
+authRoutes.post("/signout", authController.signOutUser)
+authRoutes.get("/me", verifyJwt, authController.me)
 ```
